@@ -40,7 +40,7 @@
                         Medidor Excellington
                     </h1>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <p class="text-xs text-slate-400">Sistema inteligente de fotogrametria e análise pericial</p>
+                        <p class="text-xs text-slate-400">Sistema inteligente de fotogrametria linear</p>
                         <span id="user-display-tag" class="text-xs font-semibold text-indigo-300 hidden"></span>
                         <button onclick="openUsernameModal()" class="text-[10px] text-indigo-400 hover:text-indigo-300 underline hidden" id="edit-user-btn">Editar</button>
                     </div>
@@ -85,7 +85,7 @@
                 
                 <h2 class="text-xl font-bold mb-2">Envie ou Capture a Foto</h2>
                 <p class="text-sm text-slate-400 max-w-md mb-6">
-                    Tire ou envie uma foto nítida contendo o objeto de referência (ex: veículo, placa ou marcador) no mesmo plano das distâncias que deseja analisar.
+                    Tire ou envie uma foto nítida contendo o objeto retangular de referência no mesmo plano das distâncias que deseja analisar.
                 </p>
 
                 <div class="flex flex-wrap justify-center gap-3">
@@ -212,7 +212,7 @@
 
                         <!-- Dica -->
                         <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-400">
-                            <span class="font-semibold text-indigo-400">Excellington Perícia:</span> Ideal para registrar distâncias entre veículos em acidentes.
+                            <span class="font-semibold text-indigo-400">Dica Excellington:</span> Ideal para obter e registrar distâncias e medidas de vãos e objetos com base na imagem de referência.
                         </div>
 
                     </div>
@@ -235,7 +235,7 @@
             <h3 class="text-lg font-bold mb-1 text-white flex items-center gap-2">
                 <i class="fa-solid fa-user text-indigo-400"></i> Identificação do Usuário
             </h3>
-            <p class="text-xs text-slate-400 mb-4">Informe seu nome ou estabelecimento para registrar o licenciamento de uso.</p>
+            <p class="text-xs text-slate-400 mb-4">Informe seu nome para registrar o licenciamento de uso.</p>
             <form onsubmit="handleUsernameSubmit(event)" class="space-y-3">
                 <input type="text" id="register-username-input" required placeholder="Seu Nome ou Estabelecimento" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-500">
                 <div class="flex gap-2 pt-2">
