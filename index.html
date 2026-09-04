@@ -1,0 +1,783 @@
+﻿
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medidor Excellington</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .custom-cursor {
+            cursor: crosshair;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Container Principal -->
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 flex flex-col min-h-screen">
+        
+        <!-- Cabeçalho -->
+        <header class="flex flex-col sm:flex-row items-center justify-between pb-6 border-b border-slate-800 gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-ruler-combined text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
+                        Medidor Excellington
+                    </h1>
+                    <p class="text-xs text-slate-400">Sistema inteligente de fotogrametria e análise pericial</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="status-text">Aguardando Imagem</span>
+                </div>
+                <button id="btn-open-gallery" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-images text-indigo-400"></i> Galeria (<span id="gallery-count">0</span>)
+                </button>
+            </div>
+        </header>
+
+        <!-- Área de Conteúdo Dinâmico -->
+        <main class="flex-1 py-6 flex flex-col gap-6">
+
+            <!-- Passo 1: Upload / Captura de Foto -->
+            <section id="step-upload" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 flex flex-col items-center justify-center text-center shadow-xl relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-transparent pointer-events-none"></div>
+                
+                <div class="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 text-indigo-400 group-hover:scale-105 transition-transform border border-slate-700 shadow-inner">
+                    <i class="fa-solid fa-camera text-3xl"></i>
+                </div>
+                
+                <h2 class="text-xl font-bold mb-2">Envie ou Capture a Foto</h2>
+                <p class="text-sm text-slate-400 max-w-md mb-6">
+                    Tire ou envie uma foto nítida contendo o objeto de referência (ex: veículo, placa ou marcador) no mesmo plano das distâncias que deseja analisar.
+                </p>
+
+                <div class="flex flex-wrap justify-center gap-3">
+                    <label class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-600/30 cursor-pointer transition flex items-center space-x-2">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Selecionar Imagem</span>
+                        <input type="file" id="image-input" accept="image/*" class="hidden">
+                    </label>
+                    <button id="btn-camera" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-xl border border-slate-700 transition flex items-center space-x-2">
+                        <i class="fa-solid fa-video"></i>
+                        <span>Usar Câmera ao Vivo</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Modal da Câmera -->
+            <div id="camera-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 max-w-lg w-full flex flex-col items-center shadow-2xl">
+                    <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-video text-indigo-400"></i> Câmera ao Vivo
+                    </h3>
+                    <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden mb-4 border border-slate-800">
+                        <video id="video-feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                    </div>
+                    <div class="flex space-x-3 w-full">
+                        <button id="btn-capture" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition shadow-lg shadow-indigo-600/20">
+                            Capturar Foto
+                        </button>
+                        <button id="btn-close-camera" class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal da Galeria de Análises Salvas -->
+            <div id="gallery-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full flex flex-col max-h-[85vh] shadow-2xl">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                        <h3 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-indigo-400"></i> Galeria de Análises Gravadas
+                        </h3>
+                        <button id="btn-close-gallery" class="text-slate-400 hover:text-white p-1">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+                    <div id="gallery-grid" class="flex-1 overflow-y-auto py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <p class="text-slate-500 text-center col-span-2 py-8 italic">Nenhuma análise salva no dispositivo ainda.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-800 flex justify-end">
+                        <button id="btn-clear-gallery" class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold transition border border-rose-500/20">
+                            Apagar Todas as Análises
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Passo 2: Workspace de Ajuste e Medição -->
+            <section id="step-workspace" class="hidden flex-col gap-6">
+                
+                <!-- Barra de Instruções e Ações -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+                    <div id="instruction-banner" class="flex items-center space-x-3 text-sm text-indigo-300">
+                        <i class="fa-solid fa-circle-info text-lg"></i>
+                        <span id="instruction-text">Ajuste o retângulo de referência ao objeto base.</span>
+                    </div>
+                    <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+                        <button id="btn-reset" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition border border-slate-700">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> Reiniciar
+                        </button>
+                        <button id="btn-mode-toggle" disabled class="px-3.5 py-2 bg-indigo-600/50 text-white/50 rounded-xl text-xs font-semibold transition cursor-not-allowed">
+                            <i class="fa-solid fa-ruler mr-1"></i> Modo Medição
+                        </button>
+                        <button id="btn-save-analysis" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-emerald-600/20 flex items-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> Salvar Análise
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Canvas e Painel Lateral -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Canvas Principal -->
+                    <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-3xl p-4 flex items-center justify-center relative overflow-hidden shadow-2xl min-h-[450px]">
+                        <div class="relative max-w-full max-h-[70vh] overflow-auto flex items-center justify-center">
+                            <canvas id="canvas" class="rounded-xl shadow-lg custom-cursor"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Painel Lateral -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col gap-5 shadow-2xl">
+                        
+                        <!-- Bloco de Dimensões da Referência -->
+                        <div id="ref-config-panel" class="flex flex-col gap-3">
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-square text-indigo-400"></i> Objeto de Referência
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Comprimento Real (cm)</label>
+                                    <input type="number" id="ref-length" value="20" step="0.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Largura Real (cm)</label>
+                                    <input type="number" id="ref-width" value="10" step="0.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <button id="btn-confirm-ref" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl text-sm transition shadow-md shadow-indigo-600/20">
+                                    Confirmar Referência
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Bloco de Segmentos de Retas Medidos -->
+                        <div id="measurements-panel" class="hidden flex-col flex-1 gap-3">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-pencil text-emerald-400"></i> Segmentos & Vãos
+                                </h3>
+                                <button id="btn-clear-measurements" class="text-xs text-rose-400 hover:text-rose-300 transition">Limpar</button>
+                            </div>
+                            <div id="measurements-list" class="flex-1 max-h-60 overflow-y-auto space-y-2 pr-1 text-xs">
+                                <p class="text-slate-500 text-center py-4 italic">Nenhum segmento criado. Arraste na tela para desenhar uma reta.</p>
+                            </div>
+                        </div>
+
+                        <!-- Dica -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-400">
+                            <span class="font-semibold text-indigo-400">Excellington Perícia:</span> Ideal para registrar distâncias entre veículos em acidentes.
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Rodapé -->
+        <footer class="py-4 text-center text-xs text-slate-500 border-t border-slate-800 mt-auto">
+            Medidor Excellington &copy; 2026 - Fotogrametria e Gravação de Análises Periciais
+        </footer>
+
+    </div>
+
+    <!-- Script Principal -->
+    <script>
+        let imageObj = new Image();
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        
+        let currentState = 'ADJUSTING_REF'; // ADJUSTING_REF, READY_MEASURING
+        let scaleFactorCmPerPx = 1;
+        
+        // Retângulo de referência ajustável
+        let refRect = { x: 100, y: 100, width: 150, height: 100 };
+        let activeRefHandle = null; 
+        let dragOffset = { x: 0, y: 0 };
+
+        // Segmentos de Reta
+        let segments = [];
+        let selectedSegmentIndex = null;
+        let activeSegmentHandle = null;
+        let isDrawingNewSegment = false;
+        let newSegmentDraft = null;
+
+        // Galeria Armazenada em LocalStorage
+        let analysisGallery = JSON.parse(localStorage.getItem('excellington_gallery') || '[]');
+
+        // Elementos DOM
+        const imageInput = document.getElementById('image-input');
+        const btnCamera = document.getElementById('btn-camera');
+        const cameraModal = document.getElementById('camera-modal');
+        const videoFeed = document.getElementById('video-feed');
+        const btnCapture = document.getElementById('btn-capture');
+        const btnCloseCamera = document.getElementById('btn-close-camera');
+        
+        const galleryModal = document.getElementById('gallery-modal');
+        const btnOpenGallery = document.getElementById('btn-open-gallery');
+        const btnCloseGallery = document.getElementById('btn-close-gallery');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const galleryCount = document.getElementById('gallery-count');
+        const btnClearGallery = document.getElementById('btn-clear-gallery');
+        const btnSaveAnalysis = document.getElementById('btn-save-analysis');
+        
+        const stepUpload = document.getElementById('step-upload');
+        const stepWorkspace = document.getElementById('step-workspace');
+        const statusBadge = document.getElementById('status-badge');
+        const statusText = document.getElementById('status-text');
+        const instructionText = document.getElementById('instruction-text');
+        const btnReset = document.getElementById('btn-reset');
+        const btnModeToggle = document.getElementById('btn-mode-toggle');
+        const refConfigPanel = document.getElementById('ref-config-panel');
+        const measurementsPanel = document.getElementById('measurements-panel');
+        const btnConfirmRef = document.getElementById('btn-confirm-ref');
+        const refLengthInput = document.getElementById('ref-length');
+        const refWidthInput = document.getElementById('ref-width');
+        const measurementsList = document.getElementById('measurements-list');
+        const btnClearMeasurements = document.getElementById('btn-clear-measurements');
+
+        // Inicializar contagem da galeria
+        updateGalleryUI();
+
+        // Upload
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    loadImageToCanvas(event.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Câmera
+        let mediaStream = null;
+        btnCamera.addEventListener('click', async () => {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                videoFeed.srcObject = mediaStream;
+                cameraModal.classList.remove('hidden');
+            } catch (err) {
+                alert('Não foi possível acessar a câmera do dispositivo.');
+            }
+        });
+
+        btnCapture.addEventListener('click', () => {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = videoFeed.videoWidth;
+            tempCanvas.height = videoFeed.videoHeight;
+            tempCanvas.getContext('2d').drawImage(videoFeed, 0, 0);
+            stopCamera();
+            loadImageToCanvas(tempCanvas.toDataURL('image/png'));
+        });
+
+        btnCloseCamera.addEventListener('click', stopCamera);
+
+        function stopCamera() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            cameraModal.classList.add('hidden');
+        }
+
+        // Galeria Modais
+        btnOpenGallery.addEventListener('click', () => {
+            updateGalleryUI();
+            galleryModal.classList.remove('hidden');
+        });
+        btnCloseGallery.addEventListener('click', () => galleryModal.classList.add('hidden'));
+
+        btnClearGallery.addEventListener('click', () => {
+            if (confirm('Deseja realmente apagar todas as análises salvas?')) {
+                analysisGallery = [];
+                localStorage.removeItem('excellington_gallery');
+                updateGalleryUI();
+            }
+        });
+
+        function updateGalleryUI() {
+            galleryCount.textContent = analysisGallery.length;
+            if (analysisGallery.length === 0) {
+                galleryGrid.innerHTML = '<p class="text-slate-500 text-center col-span-2 py-8 italic">Nenhuma análise salva no dispositivo ainda.</p>';
+                return;
+            }
+
+            galleryGrid.innerHTML = '';
+            analysisGallery.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-950 border border-slate-800 rounded-2xl p-3 flex flex-col gap-2';
+                card.innerHTML = `
+                    <div class="relative aspect-video rounded-xl overflow-hidden bg-black border border-slate-800">
+                        <img src="${item.dataUrl}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                        <span><i class="fa-solid fa-clock mr-1"></i> ${item.date}</span>
+                        <span class="text-emerald-400 font-semibold">${item.segmentsCount} retas</span>
+                    </div>
+                    <div class="flex gap-2 mt-1">
+                        <a href="${item.dataUrl}" download="Analise_Excellington_${idx + 1}.png" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-center font-medium transition">
+                            <i class="fa-solid fa-download mr-1"></i> Baixar Imagem
+                        </a>
+                        <button onclick="deleteGalleryItem(${idx})" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition" title="Excluir">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                galleryGrid.appendChild(card);
+            });
+        }
+
+        window.deleteGalleryItem = function(idx) {
+            analysisGallery.splice(idx, 1);
+            localStorage.setItem('excellington_gallery', JSON.stringify(analysisGallery));
+            updateGalleryUI();
+        }
+
+        function loadImageToCanvas(dataUrl) {
+            imageObj.onload = function() {
+                stepUpload.classList.add('hidden');
+                stepWorkspace.classList.remove('hidden');
+                stepWorkspace.classList.add('flex');
+                
+                let maxWidth = 750;
+                let maxHeight = 550;
+                let width = imageObj.width;
+                let height = imageObj.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+                if (height > maxHeight) {
+                    width = (maxHeight / height) * width;
+                    height = maxHeight;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                refRect = {
+                    x: width / 2 - 75,
+                    y: height / 2 - 50,
+                    width: 150,
+                    height: 100
+                };
+
+                currentState = 'ADJUSTING_REF';
+                segments = [];
+                selectedSegmentIndex = null;
+                btnSaveAnalysis.classList.add('hidden');
+                updateUIState();
+                redrawCanvas();
+            };
+            imageObj.src = dataUrl;
+        }
+
+        function updateUIState() {
+            if (currentState === 'ADJUSTING_REF') {
+                statusText.textContent = 'Ajustando Referência';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2';
+                instructionText.textContent = 'Ajuste o retângulo azul sobre o objeto de referência e confirme.';
+                btnModeToggle.disabled = true;
+                btnModeToggle.className = 'px-3.5 py-2 bg-indigo-600/50 text-white/50 rounded-xl text-xs font-semibold transition cursor-not-allowed';
+                refConfigPanel.style.display = 'flex';
+                measurementsPanel.style.display = 'none';
+                btnSaveAnalysis.classList.add('hidden');
+            } else if (currentState === 'READY_MEASURING') {
+                statusText.textContent = 'Medição Ativa';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-2';
+                instructionText.textContent = 'Arraste na tela para traçar retas e vãos. Clique em uma reta para selecionar ou editar.';
+                btnModeToggle.disabled = false;
+                btnModeToggle.className = 'px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-emerald-600/20 cursor-pointer';
+                refConfigPanel.style.display = 'none';
+                measurementsPanel.style.display = 'flex';
+                btnSaveAnalysis.classList.remove('hidden');
+            }
+        }
+
+        btnModeToggle.addEventListener('click', () => {
+            if (currentState === 'READY_MEASURING') {
+                currentState = 'ADJUSTING_REF';
+                updateUIState();
+                redrawCanvas();
+            }
+        });
+
+        // Eventos de Toque e Mouse no Canvas
+        function getCanvasPoint(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('touchstart', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        canvas.addEventListener('touchmove', handlePointerMove);
+        canvas.addEventListener('mouseup', handlePointerUp);
+        canvas.addEventListener('touchend', handlePointerUp);
+
+        function handlePointerDown(e) {
+            const p = getCanvasPoint(e);
+
+            if (currentState === 'ADJUSTING_REF') {
+                const handleSize = 12;
+                const nw = { x: refRect.x, y: refRect.y };
+                const ne = { x: refRect.x + refRect.width, y: refRect.y };
+                const se = { x: refRect.x + refRect.width, y: refRect.y + refRect.height };
+                const sw = { x: refRect.x, y: refRect.y + refRect.height };
+
+                if (Math.hypot(p.x - nw.x, p.y - nw.y) < handleSize) activeRefHandle = 'nw';
+                else if (Math.hypot(p.x - ne.x, p.y - ne.y) < handleSize) activeRefHandle = 'ne';
+                else if (Math.hypot(p.x - se.x, p.y - se.y) < handleSize) activeRefHandle = 'se';
+                else if (Math.hypot(p.x - sw.x, p.y - sw.y) < handleSize) activeRefHandle = 'sw';
+                else if (p.x >= refRect.x && p.x <= refRect.x + refRect.width && p.y >= refRect.y && p.y <= refRect.y + refRect.height) {
+                    activeRefHandle = 'move';
+                    dragOffset = { x: p.x - refRect.x, y: p.y - refRect.y };
+                }
+            } else if (currentState === 'READY_MEASURING') {
+                if (selectedSegmentIndex !== null) {
+                    const seg = segments[selectedSegmentIndex];
+                    if (seg) {
+                        const handleRadius = 10;
+                        if (Math.hypot(p.x - seg.p1.x, p.y - seg.p1.y) < handleRadius) {
+                            activeSegmentHandle = 'p1';
+                            return;
+                        }
+                        if (Math.hypot(p.x - seg.p2.x, p.y - seg.p2.y) < handleRadius) {
+                            activeSegmentHandle = 'p2';
+                            return;
+                        }
+                    }
+                }
+
+                let clickedIndex = -1;
+                segments.forEach((seg, idx) => {
+                    if (isPointNearSegment(p, seg.p1, seg.p2, 10)) {
+                        clickedIndex = idx;
+                    }
+                });
+
+                if (clickedIndex !== -1) {
+                    selectedSegmentIndex = clickedIndex;
+                    activeSegmentHandle = 'line';
+                    dragOffset = { x: p.x, y: p.y };
+                } else {
+                    selectedSegmentIndex = null;
+                    isDrawingNewSegment = true;
+                    newSegmentDraft = { p1: p, p2: p };
+                }
+                updateMeasurementsList();
+                redrawCanvas();
+            }
+        }
+
+        function handlePointerMove(e) {
+            const p = getCanvasPoint(e);
+
+            if (currentState === 'ADJUSTING_REF' && activeRefHandle) {
+                if (activeRefHandle === 'move') {
+                    refRect.x = p.x - dragOffset.x;
+                    refRect.y = p.y - dragOffset.y;
+                } else if (activeRefHandle === 'nw') {
+                    let right = refRect.x + refRect.width;
+                    let bottom = refRect.y + refRect.height;
+                    refRect.width = Math.max(20, right - p.x);
+                    refRect.height = Math.max(20, bottom - p.y);
+                    refRect.x = right - refRect.width;
+                    refRect.y = bottom - refRect.height;
+                } else if (activeRefHandle === 'ne') {
+                    let bottom = refRect.y + refRect.height;
+                    refRect.width = Math.max(20, p.x - refRect.x);
+                    refRect.height = Math.max(20, bottom - p.y);
+                    refRect.y = bottom - refRect.height;
+                } else if (activeRefHandle === 'se') {
+                    refRect.width = Math.max(20, p.x - refRect.x);
+                    refRect.height = Math.max(20, p.y - refRect.y);
+                } else if (activeRefHandle === 'sw') {
+                    let right = refRect.x + refRect.width;
+                    refRect.width = Math.max(20, right - p.x);
+                    refRect.height = Math.max(20, p.y - refRect.y);
+                    refRect.x = right - refRect.width;
+                }
+                redrawCanvas();
+            } else if (currentState === 'READY_MEASURING') {
+                if (isDrawingNewSegment && newSegmentDraft) {
+                    newSegmentDraft.p2 = p;
+                    redrawCanvas();
+                } else if (selectedSegmentIndex !== null && activeSegmentHandle) {
+                    const seg = segments[selectedSegmentIndex];
+                    if (activeSegmentHandle === 'p1') {
+                        seg.p1 = p;
+                    } else if (activeSegmentHandle === 'p2') {
+                        seg.p2 = p;
+                    } else if (activeSegmentHandle === 'line') {
+                        const dx = p.x - dragOffset.x;
+                        const dy = p.y - dragOffset.y;
+                        seg.p1.x += dx;
+                        seg.p1.y += dy;
+                        seg.p2.x += dx;
+                        seg.p2.y += dy;
+                        dragOffset = { x: p.x, y: p.y };
+                    }
+                    updateMeasurementsList();
+                    redrawCanvas();
+                }
+            }
+        }
+
+        function handlePointerUp() {
+            if (activeRefHandle) activeRefHandle = null;
+            if (isDrawingNewSegment && newSegmentDraft) {
+                const distPx = Math.hypot(newSegmentDraft.p2.x - newSegmentDraft.p1.x, newSegmentDraft.p2.y - newSegmentDraft.p1.y);
+                if (distPx > 10) {
+                    segments.push({
+                        p1: { ...newSegmentDraft.p1 },
+                        p2: { ...newSegmentDraft.p2 }
+                    });
+                    selectedSegmentIndex = segments.length - 1;
+                }
+                isDrawingNewSegment = false;
+                newSegmentDraft = null;
+                updateMeasurementsList();
+                redrawCanvas();
+            }
+            if (activeSegmentHandle) activeSegmentHandle = null;
+        }
+
+        function isPointNearSegment(p, a, b, threshold) {
+            const L2 = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y);
+            if (L2 === 0) return Math.hypot(p.x - a.x, p.y - a.y) <= threshold;
+            let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / L2;
+            t = Math.max(0, Math.min(1, t));
+            const proj = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+            return Math.hypot(p.x - proj.x, p.y - proj.y) <= threshold;
+        }
+
+        // Desenhar Canvas (com opção de omitir alças para exportação limpa)
+        function redrawCanvas(exporting = false) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+
+            // Retângulo de Referência (Apenas desenha se estiver ajustando)
+            if (currentState === 'ADJUSTING_REF') {
+                ctx.beginPath();
+                ctx.strokeStyle = '#6366f1';
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
+                ctx.rect(refRect.x, refRect.y, refRect.width, refRect.height);
+                ctx.fill();
+                ctx.stroke();
+
+                const corners = [
+                    { x: refRect.x, y: refRect.y },
+                    { x: refRect.x + refRect.width, y: refRect.y },
+                    { x: refRect.x + refRect.width, y: refRect.y + refRect.height },
+                    { x: refRect.x, y: refRect.y + refRect.height }
+                ];
+                corners.forEach(c => {
+                    ctx.beginPath();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.arc(c.x, c.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#6366f1';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('REF', refRect.x + refRect.width / 2, refRect.y + refRect.height / 2);
+            }
+
+            // Segmentos
+            segments.forEach((seg, idx) => {
+                const isSelected = (idx === selectedSegmentIndex) && !exporting;
+                const pixelDist = Math.hypot(seg.p2.x - seg.p1.x, seg.p2.y - seg.p1.y);
+                const cmDist = (pixelDist * scaleFactorCmPerPx).toFixed(1);
+
+                ctx.beginPath();
+                ctx.strokeStyle = isSelected ? '#38bdf8' : '#10b981';
+                ctx.lineWidth = isSelected ? 4 : 3;
+                ctx.moveTo(seg.p1.x, seg.p1.y);
+                ctx.lineTo(seg.p2.x, seg.p2.y);
+                ctx.stroke();
+
+                if (!exporting) {
+                    [seg.p1, seg.p2].forEach(p => {
+                        ctx.fillStyle = isSelected ? '#38bdf8' : '#10b981';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, isSelected ? 6 : 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    });
+                }
+
+                const midX = (seg.p1.x + seg.p2.x) / 2;
+                const midY = (seg.p1.y + seg.p2.y) / 2;
+                
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.fillRect(midX - 35, midY - 13, 70, 26);
+                ctx.strokeStyle = isSelected ? '#38bdf8' : '#10b981';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(midX - 35, midY - 13, 70, 26);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${cmDist} cm`, midX, midY);
+            });
+
+            if (isDrawingNewSegment && newSegmentDraft) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.moveTo(newSegmentDraft.p1.x, newSegmentDraft.p1.y);
+                ctx.lineTo(newSegmentDraft.p2.x, newSegmentDraft.p2.y);
+                ctx.stroke();
+            }
+        }
+
+        // Confirmar Referência
+        btnConfirmRef.addEventListener('click', () => {
+            const realLength = parseFloat(refLengthInput.value);
+            const realWidth = parseFloat(refWidthInput.value);
+
+            if (!realLength || !realWidth || realLength <= 0 || realWidth <= 0) {
+                alert('Insira dimensões reais válidas para a referência.');
+                return;
+            }
+
+            const avgPx = (refRect.width + refRect.height) / 2;
+            const avgReal = (realLength + realWidth) / 2;
+
+            scaleFactorCmPerPx = avgReal / avgPx;
+
+            currentState = 'READY_MEASURING';
+            updateUIState();
+            redrawCanvas();
+        });
+
+        // Salvar Análise (Gera Base64 e Armazena)
+        btnSaveAnalysis.addEventListener('click', () => {
+            // Desenhar sem os manipuladores de seleção ativos
+            redrawCanvas(true);
+            const dataUrl = canvas.toDataURL('image/png');
+            redrawCanvas(false); // Retorna com estado normal
+
+            const newAnalysis = {
+                dataUrl: dataUrl,
+                date: new Date().toLocaleString('pt-BR'),
+                segmentsCount: segments.length
+            };
+
+            analysisGallery.unshift(newAnalysis);
+            localStorage.setItem('excellington_gallery', JSON.stringify(analysisGallery));
+            updateGalleryUI();
+            
+            alert('Análise salva com sucesso na galeria do dispositivo!');
+            btnOpenGallery.click();
+        });
+
+        function updateMeasurementsList() {
+            if (segments.length === 0) {
+                measurementsList.innerHTML = '<p class="text-slate-500 text-center py-4 italic">Nenhum segmento criado. Arraste na tela para desenhar uma reta.</p>';
+                return;
+            }
+
+            measurementsList.innerHTML = '';
+            segments.forEach((seg, idx) => {
+                const isSelected = idx === selectedSegmentIndex;
+                const pixelDist = Math.hypot(seg.p2.x - seg.p1.x, seg.p2.y - seg.p1.y);
+                const cmDist = (pixelDist * scaleFactorCmPerPx).toFixed(1);
+
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between bg-slate-950 border rounded-xl p-2.5 text-xs transition cursor-pointer ${isSelected ? 'border-sky-500 bg-sky-500/10' : 'border-slate-800 hover:border-slate-700'}`;
+                
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2" onclick="selectSegment(${idx})">
+                        <span class="w-2 h-2 rounded-full ${isSelected ? 'bg-sky-400' : 'bg-emerald-400'}"></span>
+                        <span class="font-medium text-slate-300">Medida #${idx + 1}</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-bold ${isSelected ? 'text-sky-400' : 'text-emerald-400'}">${cmDist} cm</span>
+                        <button onclick="deleteSegment(event, ${idx})" class="text-rose-400 hover:text-rose-300 p-1" title="Excluir">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                measurementsList.appendChild(item);
+            });
+        }
+
+        window.selectSegment = function(idx) {
+            selectedSegmentIndex = idx;
+            updateMeasurementsList();
+            redrawCanvas();
+        }
+
+        window.deleteSegment = function(e, idx) {
+            e.stopPropagation();
+            segments.splice(idx, 1);
+            if (selectedSegmentIndex === idx) selectedSegmentIndex = null;
+            else if (selectedSegmentIndex > idx) selectedSegmentIndex--;
+            updateMeasurementsList();
+            redrawCanvas();
+        }
+
+        btnClearMeasurements.addEventListener('click', () => {
+            segments = [];
+            selectedSegmentIndex = null;
+            updateMeasurementsList();
+            redrawCanvas();
+        });
+
+        btnReset.addEventListener('click', () => {
+            currentState = 'ADJUSTING_REF';
+            segments = [];
+            selectedSegmentIndex = null;
+            stepWorkspace.classList.remove('flex');
+            stepWorkspace.classList.add('hidden');
+            stepUpload.classList.remove('hidden');
+            imageInput.value = '';
+            btnSaveAnalysis.classList.add('hidden');
+            updateUIState();
+        });
+    </script>
+</body>
+</html>
+```
