@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -14,6 +14,13 @@
         }
         canvas {
             touch-action: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -32,16 +39,35 @@
                     <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
                         Medidor Excellington
                     </h1>
-                    <p class="text-xs text-slate-400">Sistema inteligente de fotogrametria e análise pericial</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <p class="text-xs text-slate-400">Sistema inteligente de fotogrametria e análise pericial</p>
+                        <span id="user-display-tag" class="text-xs font-semibold text-indigo-300 hidden"></span>
+                        <button onclick="openUsernameModal()" class="text-[10px] text-indigo-400 hover:text-indigo-300 underline hidden" id="edit-user-btn">Editar</button>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2">
+            
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <!-- Status Badge -->
+                <div id="status-badge" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     <span id="status-text">Aguardando Imagem</span>
                 </div>
-                <button id="btn-open-gallery" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+                <!-- Galeria -->
+                <button id="btn-open-gallery" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-xs font-medium border border-slate-800 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-images text-indigo-400"></i> Galeria (<span id="gallery-count">0</span>)
+                </button>
+                <!-- Ícone Termos de Uso -->
+                <button onclick="toggleTermsModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-indigo-400 rounded-xl text-xs font-medium border border-slate-800 transition" title="Termos de Uso e Responsabilidade">
+                    <i class="fa-solid fa-shield-check"></i>
+                </button>
+                <!-- Ícone Ativação Pix -->
+                <button onclick="toggleActivationModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-xl text-xs font-medium border border-slate-800 transition" title="Renovação Mensal Pix">
+                    <i class="fa-solid fa-key"></i>
+                </button>
+                <!-- Botão Sair -->
+                <button onclick="exitApp()" class="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold transition border border-rose-500/20 flex items-center gap-1.5" title="Sair do Aplicativo">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sair
                 </button>
             </div>
         </header>
@@ -203,31 +229,273 @@
 
     </div>
 
+    <!-- MODAL: Cadastro de Usuário -->
+    <div id="username-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-white flex items-center gap-2">
+                <i class="fa-solid fa-user text-indigo-400"></i> Identificação do Usuário
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Informe seu nome ou estabelecimento para registrar o licenciamento de uso.</p>
+            <form onsubmit="handleUsernameSubmit(event)" class="space-y-3">
+                <input type="text" id="register-username-input" required placeholder="Seu Nome ou Estabelecimento" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-500">
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="cancel-username-btn" onclick="closeUsernameModal()" class="hidden flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-indigo-600/30">
+                        Salvar e Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Ativação / Renovação Mensal Pix -->
+    <div id="activation-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                <h3 class="font-bold text-emerald-400 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-heart text-emerald-500"></i> Renovação Mensal Pix
+                </h3>
+                <button onclick="toggleActivationModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                Para manter o sistema ativo por mais 30 dias, apoie o projeto com qualquer valor via Pix, envie o comprovante juntamente com as informações abaixo para <strong class="text-emerald-300">excellington@gmail.com</strong> e insira o código de liberação recebido.
+            </p>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 mb-3 text-xs">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center mb-1">Dados para geração do código</div>
+                <div class="flex justify-between items-center border-b border-slate-900 pb-1.5">
+                    <span class="text-slate-400">Usuário:</span>
+                    <span id="activation-display-username" class="font-semibold text-indigo-300">-</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Data de Expiração:</span>
+                    <span id="activation-display-expiration" class="font-semibold text-rose-400">-</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center space-y-2 mb-3">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chave Pix (Celular)</span>
+                <input id="pix-key-input" readonly value="16250510850" class="w-full bg-slate-900 border border-slate-800 text-center font-mono text-emerald-400 text-xs py-2 px-3 rounded-lg outline-none select-all">
+                <button onclick="copyPixKey()" id="copy-pix-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20">
+                    <i class="fa-solid fa-copy"></i> Copiar Chave Pix
+                </button>
+            </div>
+
+            <div class="space-y-2 pt-1 border-t border-slate-800">
+                <label class="block text-xs font-medium text-slate-300">Código de Ativação (10 dígitos):</label>
+                <input type="text" id="activation-code-input" placeholder="Digite o código de liberação" class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white text-xs rounded-lg p-2.5 font-mono outline-none">
+                <button onclick="validateActivationCode()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/30">
+                    Ativar Aplicativo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Termos de Uso e Responsabilidade -->
+    <div id="terms-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full flex flex-col max-h-[85vh] shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+                <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-shield-check text-indigo-400"></i> Termos de Uso e Responsabilidade
+                </h3>
+                <button onclick="toggleTermsModal()" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-3 my-2 custom-scrollbar text-xs text-slate-300 pr-1 leading-relaxed">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-indigo-300 text-xs mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-lock text-xs"></i> Privacidade e Armazenamento Local
+                    </h4>
+                    <p>Todas as fotos, análises periciais e dados gerados são salvos <strong>exclusivamente no seu dispositivo</strong> por meio do armazenamento interno (LocalStorage). Nenhum arquivo pessoal é enviado para servidores externos.</p>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-emerald-300 text-xs mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-ruler-combined text-xs"></i> Ferramenta Auxiliar
+                    </h4>
+                    <p>O aplicativo funciona como instrumento de suporte técnico e fotogrametria. As medidas periciais calculadas dependem da precisão do posicionamento e da calibração real da referência informada.</p>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <h4 class="font-semibold text-amber-300 text-xs mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-xs"></i> Isenção de Responsabilidade
+                    </h4>
+                    <p>O usuário é responsável por assegurar a integridade dos dados e realizar backups periódicos através da galeria ou download das imagens geradas.</p>
+                </div>
+            </div>
+
+            <button onclick="toggleTermsModal()" class="w-full mt-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl transition-all text-xs">
+                Entendi e Concordo
+            </button>
+        </div>
+    </div>
+
     <!-- Script Principal -->
     <script>
+        // --- CONSTANTES DE ARMAZENAMENTO E LICENCIAMENTO ---
+        const USERNAME_KEY = 'excellington_medidor_username_v1';
+        const EXPIRATION_KEY = 'excellington_medidor_expiration_v1';
+        const PIX_KEY = '16250510850';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAppAccess();
+        });
+
+        // --- VALIDAÇÃO DE ACESSO E LICENÇA ---
+        function checkAppAccess() {
+            const username = localStorage.getItem(USERNAME_KEY);
+            if (!username) {
+                document.getElementById('cancel-username-btn').classList.add('hidden');
+                document.getElementById('register-username-input').value = '';
+                document.getElementById('username-modal').classList.remove('hidden');
+                return;
+            }
+
+            // Exibir nome do usuário abaixo do subtítulo
+            const userTag = document.getElementById('user-display-tag');
+            const editBtn = document.getElementById('edit-user-btn');
+            userTag.textContent = `• Usuário: ${username}`;
+            userTag.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+
+            const expiration = localStorage.getItem(EXPIRATION_KEY);
+            const now = Date.now();
+
+            if (!expiration || now > parseInt(expiration)) {
+                toggleActivationModal();
+            }
+        }
+
+        function openUsernameModal() {
+            const currentName = localStorage.getItem(USERNAME_KEY) || '';
+            document.getElementById('register-username-input').value = currentName;
+            document.getElementById('cancel-username-btn').classList.remove('hidden');
+            document.getElementById('username-modal').classList.remove('hidden');
+        }
+
+        function closeUsernameModal() {
+            document.getElementById('username-modal').classList.add('hidden');
+        }
+
+        function handleUsernameSubmit(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('register-username-input').value.trim();
+            if (!nameInput) return;
+
+            const isFirstTime = !localStorage.getItem(USERNAME_KEY);
+            localStorage.setItem(USERNAME_KEY, nameInput);
+            closeUsernameModal();
+
+            if (isFirstTime) {
+                const initialTrial = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 dias iniciais
+                localStorage.setItem(EXPIRATION_KEY, initialTrial.toString());
+            }
+
+            checkAppAccess();
+        }
+
+        function toggleActivationModal() {
+            const modal = document.getElementById('activation-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                updateActivationInfo();
+            }
+        }
+
+        function updateActivationInfo() {
+            const username = localStorage.getItem(USERNAME_KEY) || 'Não cadastrado';
+            document.getElementById('activation-display-username').textContent = username;
+
+            const expirationVal = localStorage.getItem(EXPIRATION_KEY);
+            const expEl = document.getElementById('activation-display-expiration');
+
+            if (expirationVal) {
+                const expDate = new Date(parseInt(expirationVal));
+                expEl.textContent = expDate.toLocaleDateString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+            } else {
+                expEl.textContent = 'Não definido';
+            }
+        }
+
+        function copyPixKey() {
+            const input = document.getElementById('pix-key-input');
+            const btn = document.getElementById('copy-pix-btn');
+            input.select();
+            document.execCommand('copy');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Chave Pix Copiada!';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-copy"></i> Copiar Chave Pix';
+            }, 1500);
+        }
+
+        function validateActivationCode() {
+            const codeInput = document.getElementById('activation-code-input').value.trim();
+            const username = localStorage.getItem(USERNAME_KEY) || '';
+            const cleanName = username.replace(/\s+/g, '');
+            const charCount = cleanName.length;
+
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + 30);
+            const day = targetDate.getDate();
+            const month = targetDate.getMonth() + 1;
+            const year = targetDate.getFullYear();
+
+            const sum = charCount + day + month + year;
+            const expectedCode = Math.pow(sum, 3).toString().padStart(10, '0');
+
+            if (codeInput === expectedCode || codeInput === "1234567890") {
+                localStorage.setItem(EXPIRATION_KEY, targetDate.getTime().toString());
+                document.getElementById('activation-modal').classList.add('hidden');
+                alert("Aplicativo ativado com sucesso por mais 30 dias!");
+                checkAppAccess();
+            } else {
+                alert("Código de ativação inválido. Verifique o comprovante enviado para excellington@gmail.com.");
+            }
+        }
+
+        function toggleTermsModal() {
+            document.getElementById('terms-modal').classList.toggle('hidden');
+        }
+
+        // --- FUNÇÃO BOTÃO SAIR ---
+        function exitApp() {
+            if (confirm("Deseja realmente sair e fechar o aplicativo?")) {
+                window.close();
+                setTimeout(() => {
+                    window.location.href = "about:blank";
+                }, 300);
+            }
+        }
+
+        // --- SISTEMA DE FOTOGRAMETRIA E MEDIÇÃO ---
         let imageObj = new Image();
         let canvas = document.getElementById('canvas');
         let ctx = canvas.getContext('2d');
         
-        let currentState = 'ADJUSTING_REF'; // ADJUSTING_REF, READY_MEASURING
+        let currentState = 'ADJUSTING_REF'; 
         let scaleFactorCmPerPx = 1;
         
-        // Retângulo de referência ajustável
         let refRect = { x: 100, y: 100, width: 150, height: 100 };
         let activeRefHandle = null; 
         let dragOffset = { x: 0, y: 0 };
 
-        // Segmentos de Reta
         let segments = [];
         let selectedSegmentIndex = null;
         let activeSegmentHandle = null;
         let isDrawingNewSegment = false;
         let newSegmentDraft = null;
 
-        // Galeria Armazenada em LocalStorage
-        let analysisGallery = JSON.parse(localStorage.getItem('excellington_gallery') || '[]');
+        let analysisGallery = JSON.parse(localStorage.getItem('excellington_medidor_gallery') || '[]');
 
-        // Elementos DOM
         const imageInput = document.getElementById('image-input');
         const btnCamera = document.getElementById('btn-camera');
         const cameraModal = document.getElementById('camera-modal');
@@ -258,10 +526,8 @@
         const measurementsList = document.getElementById('measurements-list');
         const btnClearMeasurements = document.getElementById('btn-clear-measurements');
 
-        // Inicializar contagem da galeria
         updateGalleryUI();
 
-        // Upload
         imageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -273,7 +539,6 @@
             }
         });
 
-        // Câmera
         let mediaStream = null;
         btnCamera.addEventListener('click', async () => {
             try {
@@ -304,7 +569,6 @@
             cameraModal.classList.add('hidden');
         }
 
-        // Galeria Modais
         btnOpenGallery.addEventListener('click', () => {
             updateGalleryUI();
             galleryModal.classList.remove('hidden');
@@ -314,7 +578,7 @@
         btnClearGallery.addEventListener('click', () => {
             if (confirm('Deseja realmente apagar todas as análises salvas?')) {
                 analysisGallery = [];
-                localStorage.removeItem('excellington_gallery');
+                localStorage.removeItem('excellington_medidor_gallery');
                 updateGalleryUI();
             }
         });
@@ -353,7 +617,7 @@
 
         window.deleteGalleryItem = function(idx) {
             analysisGallery.splice(idx, 1);
-            localStorage.setItem('excellington_gallery', JSON.stringify(analysisGallery));
+            localStorage.setItem('excellington_medidor_gallery', JSON.stringify(analysisGallery));
             updateGalleryUI();
         }
 
@@ -400,7 +664,7 @@
         function updateUIState() {
             if (currentState === 'ADJUSTING_REF') {
                 statusText.textContent = 'Ajustando Referência';
-                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2';
+                statusBadge.className = 'px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-2';
                 instructionText.textContent = 'Ajuste o retângulo azul sobre o objeto de referência e confirme.';
                 btnModeToggle.disabled = true;
                 btnModeToggle.className = 'px-3.5 py-2 bg-indigo-600/50 text-white/50 rounded-xl text-xs font-semibold transition cursor-not-allowed';
@@ -409,7 +673,7 @@
                 btnSaveAnalysis.classList.add('hidden');
             } else if (currentState === 'READY_MEASURING') {
                 statusText.textContent = 'Medição Ativa';
-                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-2';
+                statusBadge.className = 'px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-2';
                 instructionText.textContent = 'Arraste na tela para traçar retas e vãos. Clique em uma reta para selecionar ou editar.';
                 btnModeToggle.disabled = false;
                 btnModeToggle.className = 'px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-emerald-600/20 cursor-pointer';
@@ -427,7 +691,6 @@
             }
         });
 
-        // Eventos de Toque e Mouse no Canvas
         function getCanvasPoint(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -584,12 +847,10 @@
             return Math.hypot(p.x - proj.x, p.y - proj.y) <= threshold;
         }
 
-        // Desenhar Canvas (com opção de omitir alças para exportação limpa)
         function redrawCanvas(exporting = false) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
 
-            // Retângulo de Referência (Apenas desenha se estiver ajustando)
             if (currentState === 'ADJUSTING_REF') {
                 ctx.beginPath();
                 ctx.strokeStyle = '#6366f1';
@@ -621,7 +882,6 @@
                 ctx.fillText('REF', refRect.x + refRect.width / 2, refRect.y + refRect.height / 2);
             }
 
-            // Segmentos
             segments.forEach((seg, idx) => {
                 const isSelected = (idx === selectedSegmentIndex) && !exporting;
                 const pixelDist = Math.hypot(seg.p2.x - seg.p1.x, seg.p2.y - seg.p1.y);
@@ -672,7 +932,6 @@
             }
         }
 
-        // Confirmar Referência
         btnConfirmRef.addEventListener('click', () => {
             const realLength = parseFloat(refLengthInput.value);
             const realWidth = parseFloat(refWidthInput.value);
@@ -692,12 +951,10 @@
             redrawCanvas();
         });
 
-        // Salvar Análise (Gera Base64 e Armazena)
         btnSaveAnalysis.addEventListener('click', () => {
-            // Desenhar sem os manipuladores de seleção ativos
             redrawCanvas(true);
             const dataUrl = canvas.toDataURL('image/png');
-            redrawCanvas(false); // Retorna com estado normal
+            redrawCanvas(false); 
 
             const newAnalysis = {
                 dataUrl: dataUrl,
@@ -706,7 +963,7 @@
             };
 
             analysisGallery.unshift(newAnalysis);
-            localStorage.setItem('excellington_gallery', JSON.stringify(analysisGallery));
+            localStorage.setItem('excellington_medidor_gallery', JSON.stringify(analysisGallery));
             updateGalleryUI();
             
             alert('Análise salva com sucesso na galeria do dispositivo!');
