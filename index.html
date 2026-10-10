@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -62,8 +61,8 @@
                     <i class="fa-solid fa-shield-check"></i>
                 </button>
                 <!-- Ícone Ativação Pix -->
-                <button onclick="toggleActivationModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-xl text-xs font-medium border border-slate-800 transition" title="Renovação Mensal Pix">
-                    <i class="fa-solid fa-key"></i>
+                <button onclick="openActivationModal(false)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 rounded-xl text-xs font-medium border border-slate-800 transition" title="Renovação Mensal Pix">
+                    <i class="fa-solid fa-key"></i> Ativação
                 </button>
                 <!-- Botão Sair -->
                 <button onclick="exitApp()" class="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold transition border border-rose-500/20 flex items-center gap-1.5" title="Sair do Aplicativo">
@@ -257,7 +256,7 @@
                 <h3 class="font-bold text-emerald-400 text-base flex items-center gap-2">
                     <i class="fa-solid fa-heart text-emerald-500"></i> Renovação Mensal Pix
                 </h3>
-                <button onclick="toggleActivationModal()" class="text-slate-400 hover:text-white p-1">
+                <button id="activation-close-btn" onclick="toggleActivationModal()" class="text-slate-400 hover:text-white p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -287,7 +286,7 @@
             </div>
 
             <div class="space-y-2 pt-1 border-t border-slate-800">
-                <label class="block text-xs font-medium text-slate-300">Código de Ativação (10 dígitos):</label>
+                <label class="block text-xs font-medium text-slate-300">Código de Ativação (Gerado pelo Admin):</label>
                 <input type="text" id="activation-code-input" placeholder="Digite o código de liberação" class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white text-xs rounded-lg p-2.5 font-mono outline-none">
                 <button onclick="validateActivationCode()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/30">
                     Ativar Aplicativo
@@ -343,34 +342,50 @@
         const USERNAME_KEY = 'excellington_medidor_username_v1';
         const EXPIRATION_KEY = 'excellington_medidor_expiration_v1';
         const PIX_KEY = '16250510850';
+        let isAppForcedBlocked = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             checkAppAccess();
         });
 
         // --- VALIDAÇÃO DE ACESSO E LICENÇA ---
+        function readStoredExpiration() {
+            const raw = localStorage.getItem(EXPIRATION_KEY);
+            if (raw === null || raw.trim() === '') return null;
+            const numeric = Number(raw);
+            if (Number.isFinite(numeric) && numeric > 0) {
+                return numeric < 100000000000 ? numeric * 1000 : numeric;
+            }
+            const parsed = Date.parse(raw);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
         function checkAppAccess() {
             const username = localStorage.getItem(USERNAME_KEY);
+            const usernameModal = document.getElementById('username-modal');
+
             if (!username) {
                 document.getElementById('cancel-username-btn').classList.add('hidden');
                 document.getElementById('register-username-input').value = '';
-                document.getElementById('username-modal').classList.remove('hidden');
-                return;
+                usernameModal.classList.remove('hidden');
+                return false;
             }
 
-            // Exibir nome do usuário abaixo do subtítulo
             const userTag = document.getElementById('user-display-tag');
             const editBtn = document.getElementById('edit-user-btn');
             userTag.textContent = `• Usuário: ${username}`;
             userTag.classList.remove('hidden');
             editBtn.classList.remove('hidden');
 
-            const expiration = localStorage.getItem(EXPIRATION_KEY);
+            const expiration = readStoredExpiration();
             const now = Date.now();
 
-            if (!expiration || now > parseInt(expiration)) {
-                toggleActivationModal();
+            if (!expiration || now > expiration) {
+                openActivationModal(true); // Bloqueio forçado por expiração
+                return false;
             }
+
+            return true;
         }
 
         function openUsernameModal() {
@@ -393,37 +408,63 @@
             localStorage.setItem(USERNAME_KEY, nameInput);
             closeUsernameModal();
 
-            if (isFirstTime) {
-                const initialTrial = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 dias iniciais
-                localStorage.setItem(EXPIRATION_KEY, initialTrial.toString());
+            if (isFirstTime && readStoredExpiration() === null) {
+                const initialTrial = Date.now() + (30 * 24 * 60 * 60 * 1000);
+                localStorage.setItem(EXPIRATION_KEY, String(initialTrial));
             }
 
             checkAppAccess();
         }
 
+        function openActivationModal(forced = false) {
+            isAppForcedBlocked = forced;
+            const modal = document.getElementById('activation-modal');
+            const closeBtn = document.getElementById('activation-close-btn');
+            
+            if (closeBtn) {
+                if (forced) {
+                    closeBtn.classList.add('hidden');
+                } else {
+                    closeBtn.classList.remove('hidden');
+                }
+            }
+            modal.classList.remove('hidden');
+            updateActivationInfo();
+        }
+
         function toggleActivationModal() {
+            if (isAppForcedBlocked) return;
             const modal = document.getElementById('activation-modal');
             modal.classList.toggle('hidden');
             if (!modal.classList.contains('hidden')) {
+                isAppForcedBlocked = false;
+                const closeBtn = document.getElementById('activation-close-btn');
+                if (closeBtn) closeBtn.classList.remove('hidden');
                 updateActivationInfo();
             }
+        }
+
+        function getRenewalTargetDate() {
+            const storedExpiration = readStoredExpiration();
+            const baseDate = (storedExpiration !== null && storedExpiration > Date.now()) 
+                ? new Date(storedExpiration) 
+                : new Date();
+
+            const targetDate = new Date(baseDate);
+            targetDate.setDate(targetDate.getDate() + 30);
+            targetDate.setHours(23, 59, 59, 999);
+            return targetDate;
         }
 
         function updateActivationInfo() {
             const username = localStorage.getItem(USERNAME_KEY) || 'Não cadastrado';
             document.getElementById('activation-display-username').textContent = username;
 
-            const expirationVal = localStorage.getItem(EXPIRATION_KEY);
-            const expEl = document.getElementById('activation-display-expiration');
-
-            if (expirationVal) {
-                const expDate = new Date(parseInt(expirationVal));
-                expEl.textContent = expDate.toLocaleDateString('pt-BR', {
+            const targetDate = getRenewalTargetDate();
+            document.getElementById('activation-display-expiration').textContent =
+                targetDate.toLocaleDateString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
-            } else {
-                expEl.textContent = 'Não definido';
-            }
         }
 
         function copyPixKey() {
@@ -442,24 +483,34 @@
             const username = localStorage.getItem(USERNAME_KEY) || '';
             const cleanName = username.replace(/\s+/g, '');
             const charCount = cleanName.length;
+            const targetDate = getRenewalTargetDate();
 
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + 30);
             const day = targetDate.getDate();
             const month = targetDate.getMonth() + 1;
             const year = targetDate.getFullYear();
 
-            const sum = charCount + day + month + year;
-            const expectedCode = Math.pow(sum, 3).toString().padStart(10, '0');
+            const baseSum = charCount + day + month + year;
+            const expectedCode = String(Math.pow(baseSum, 3));
 
             if (codeInput === expectedCode || codeInput === "1234567890") {
                 localStorage.setItem(EXPIRATION_KEY, targetDate.getTime().toString());
+                isAppForcedBlocked = false;
                 document.getElementById('activation-modal').classList.add('hidden');
                 alert("Aplicativo ativado com sucesso por mais 30 dias!");
                 checkAppAccess();
             } else {
                 alert("Código de ativação inválido. Verifique o comprovante enviado para excellington@gmail.com.");
             }
+        }
+
+        function checkAccessBeforeAction() {
+            const expiration = readStoredExpiration();
+            const now = Date.now();
+            if (!expiration || now > expiration) {
+                openActivationModal(true);
+                return false;
+            }
+            return true;
         }
 
         function toggleTermsModal() {
@@ -475,6 +526,11 @@
                 }, 300);
             }
         }
+
+        setInterval(() => checkAccessBeforeAction(), 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) checkAccessBeforeAction();
+        });
 
         // --- SISTEMA DE FOTOGRAMETRIA E MEDIÇÃO ---
         let imageObj = new Image();
@@ -529,6 +585,7 @@
         updateGalleryUI();
 
         imageInput.addEventListener('change', (e) => {
+            if (!checkAccessBeforeAction()) return;
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -541,6 +598,7 @@
 
         let mediaStream = null;
         btnCamera.addEventListener('click', async () => {
+            if (!checkAccessBeforeAction()) return;
             try {
                 mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 videoFeed.srcObject = mediaStream;
@@ -551,6 +609,7 @@
         });
 
         btnCapture.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = videoFeed.videoWidth;
             tempCanvas.height = videoFeed.videoHeight;
@@ -570,12 +629,14 @@
         }
 
         btnOpenGallery.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             updateGalleryUI();
             galleryModal.classList.remove('hidden');
         });
         btnCloseGallery.addEventListener('click', () => galleryModal.classList.add('hidden'));
 
         btnClearGallery.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             if (confirm('Deseja realmente apagar todas as análises salvas?')) {
                 analysisGallery = [];
                 localStorage.removeItem('excellington_medidor_gallery');
@@ -616,6 +677,7 @@
         }
 
         window.deleteGalleryItem = function(idx) {
+            if (!checkAccessBeforeAction()) return;
             analysisGallery.splice(idx, 1);
             localStorage.setItem('excellington_medidor_gallery', JSON.stringify(analysisGallery));
             updateGalleryUI();
@@ -684,6 +746,7 @@
         }
 
         btnModeToggle.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             if (currentState === 'READY_MEASURING') {
                 currentState = 'ADJUSTING_REF';
                 updateUIState();
@@ -711,6 +774,7 @@
         canvas.addEventListener('touchend', handlePointerUp);
 
         function handlePointerDown(e) {
+            if (!checkAccessBeforeAction()) return;
             const p = getCanvasPoint(e);
 
             if (currentState === 'ADJUSTING_REF') {
@@ -933,6 +997,7 @@
         }
 
         btnConfirmRef.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             const realLength = parseFloat(refLengthInput.value);
             const realWidth = parseFloat(refWidthInput.value);
 
@@ -952,6 +1017,7 @@
         });
 
         btnSaveAnalysis.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             redrawCanvas(true);
             const dataUrl = canvas.toDataURL('image/png');
             redrawCanvas(false); 
@@ -1002,12 +1068,14 @@
         }
 
         window.selectSegment = function(idx) {
+            if (!checkAccessBeforeAction()) return;
             selectedSegmentIndex = idx;
             updateMeasurementsList();
             redrawCanvas();
         }
 
         window.deleteSegment = function(e, idx) {
+            if (!checkAccessBeforeAction()) return;
             e.stopPropagation();
             segments.splice(idx, 1);
             if (selectedSegmentIndex === idx) selectedSegmentIndex = null;
@@ -1017,6 +1085,7 @@
         }
 
         btnClearMeasurements.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             segments = [];
             selectedSegmentIndex = null;
             updateMeasurementsList();
@@ -1024,6 +1093,7 @@
         });
 
         btnReset.addEventListener('click', () => {
+            if (!checkAccessBeforeAction()) return;
             currentState = 'ADJUSTING_REF';
             segments = [];
             selectedSegmentIndex = null;
@@ -1037,4 +1107,3 @@
     </script>
 </body>
 </html>
-```
