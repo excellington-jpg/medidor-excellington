@@ -446,25 +446,30 @@
 
         function getRenewalTargetDate() {
             const storedExpiration = readStoredExpiration();
-            const baseDate = (storedExpiration !== null && storedExpiration > Date.now()) 
-                ? new Date(storedExpiration) 
-                : new Date();
+            const baseTime = (storedExpiration !== null && storedExpiration > Date.now()) 
+                ? storedExpiration 
+                : Date.now();
 
-            const targetDate = new Date(baseDate);
-            targetDate.setDate(targetDate.getDate() + 30);
+            const targetDate = new Date(baseTime + (30 * 24 * 60 * 60 * 1000));
             targetDate.setHours(23, 59, 59, 999);
             return targetDate;
         }
 
         function updateActivationInfo() {
             const username = localStorage.getItem(USERNAME_KEY) || 'Não cadastrado';
-            document.getElementById('activation-display-username').textContent = username;
+            const userEl = document.getElementById('activation-display-username');
+            if (userEl) userEl.textContent = username;
 
-            const targetDate = getRenewalTargetDate();
-            document.getElementById('activation-display-expiration').textContent =
-                targetDate.toLocaleDateString('pt-BR', {
+            // CORREÇÃO: Exibe exatamente a data real em que expirou (sem somar dias)
+            const storedExpiration = readStoredExpiration();
+            const expDate = storedExpiration ? new Date(storedExpiration) : new Date();
+
+            const expEl = document.getElementById('activation-display-expiration');
+            if (expEl) {
+                expEl.textContent = expDate.toLocaleDateString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
+            }
         }
 
         function copyPixKey() {
